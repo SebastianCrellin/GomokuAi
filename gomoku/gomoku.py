@@ -84,7 +84,7 @@ def main():
     board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=int)
 
     # connect the alarm signal with the handler
-    signal.signal(signal.SIGALRM, handler)
+    signal.signal(signal.SIGABRT, handler)
 
     # play the game
     winner = 0
