@@ -3,6 +3,7 @@ import numpy as np
 from misc import legalMove
 from gomokuAgent import GomokuAgent
 
+#Random AI atm
 class Player(GomokuAgent):
     def move(self, board):
         while True:
