@@ -1,14 +1,21 @@
 import numpy as np
-
+import time
+import concurrent.futures
+import itertools
 from misc import legalMove
 from gomokuAgent import GomokuAgent
 
 
 class Player(GomokuAgent):
-    savedGrid = [0,0]
+    global savedGrid, leaf
+    savedGrid = (5,5)
+    leaf = 0
+
 
     def move(self, board):
-        global savedGrid
+        global savedGrid, leaf
+        leaf = 0
+
         boardCopy = []
 
         for row in range(len(board)):#this makes a copy of the  bourd at turns it in to a 2d array
@@ -17,8 +24,13 @@ class Player(GomokuAgent):
                 boardCopy = [list(row) for row in board]
 
         root = NaryTreeNode(boardCopy, [0][0])
+        start_time = time.perf_counter()
 
-        self.depth(root, 2, self.ID, -10000000000, 10000000000)
+        self.depth(root, 2, self.ID, float('-inf'), float('inf'))
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        print(f"Elapsed time: {elapsed_time:.6f} seconds - player 2")
+        print(leaf)
 
         moveLoc = savedGrid
         print(moveLoc)
@@ -28,20 +40,22 @@ class Player(GomokuAgent):
 
     def bourdStates(self, board, color):#this function simulates all the posibul positions that can be made from the inputed bourd position
         storedGames = []
-        for row in range(len(board)):
-            for col in range(len(board)):
-                if board[row][col] == 0:
-                    moveLoc = (row, col)
+        for i, item in enumerate(itertools.chain(*board)):
+            row = i // len(board[0])  # calculate row index
+            col = i % len(board[0])
+            if board[row][col] == 0:
+                moveLoc = (row, col)
+                boardCopy = [list(row) for row in board]  # create a copy of the board
+                boardCopy[row][col] = color  # update the copy with the new move
+                game = (boardCopy, moveLoc)
+                storedGames.append(game)
 
-                    boardCopy = [list(row) for row in board]  # create a copy of the board
-                    boardCopy[row][col] = color  # update the copy with the new move
-                    game = (boardCopy, moveLoc)
 
-                    storedGames.append(game)
 
         return storedGames
 
-    def score(self, bourd):#this gives each indevidual bourd position a numerical score
+    def score(self, bourd):  # this gives each indevidual bourd position a numerical score
+
 
         score = 0
         for row in range(len(bourd)):
@@ -64,7 +78,7 @@ class Player(GomokuAgent):
                     score += self.evaluate_line(line)
         return score
 
-    def evaluate_line(self, line):#this calculates how many in a row it has
+    def evaluate_line(self, line):  # this calculates how many in a row it has
 
         opponent = -self.ID
         if line.count(self.ID) == 5:
@@ -87,14 +101,20 @@ class Player(GomokuAgent):
             return 0
 
     def depth(self, start, depth, color, alpha, beta):# this recursivly crates an n-ary tree with all posibul bourd positions then uses a minimax algorithem to pick a move
-        global savedGrid
+        global savedGrid, leaf
         if depth <= 0:
+            #start_time = time.perf_counter()
             value = self.score(start.get_value())
+            #end_time = time.perf_counter()
+            #elapsed_time = end_time - start_time
+            #print(f"Elapsed time: {elapsed_time:.6f} seconds")
+            leaf += 1
             return value
 
         if color == self.ID:
-            max_val = -100000000000
+            max_val = float('-inf')
             storedGames = self.bourdStates(start.get_value(), color)
+
 
             for i in range(len(storedGames)):
                 child1 = NaryTreeNode(storedGames[i][0], storedGames[i][1])
@@ -104,7 +124,6 @@ class Player(GomokuAgent):
                 if value > max_val:
                     max_val = value
                     if depth == 2:
-
                         savedGrid = child1.get_move()
 
                 if alpha < value:
@@ -116,8 +135,12 @@ class Player(GomokuAgent):
                 start.add_child(child1)
             return max_val
         else:
-            min_val = 100000000000
+            min_val = float('inf')
+            ##start_time = time.perf_counter()
             storedGames = self.bourdStates(start.get_value(), color)
+            ##end_time = time.perf_counter()
+            ##elapsed_time = end_time - start_time
+            ##print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
             for i in range(len(storedGames)):
                 child1 = NaryTreeNode(storedGames[i][0], storedGames[i][1])
