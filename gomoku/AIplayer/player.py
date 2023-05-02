@@ -1,12 +1,158 @@
+#Alex Taylor - 2006830
+#Luke Manning - 2011400
+#Sebastian Crellin - 2034223
+
 import numpy as np
 
 from misc import legalMove
 from gomokuAgent import GomokuAgent
 
-#Random AI atm
+
 class Player(GomokuAgent):
+    savedGrid = [0,0]
+
     def move(self, board):
-        while True:
-            moveLoc = tuple(np.random.randint(self.BOARD_SIZE, size=2))
-            if legalMove(board, moveLoc):
-                return moveLoc
+        global savedGrid
+
+        boardCopy = [list(row) for row in board]  # this makes a copy of the board at turns it into a 2d array
+
+        root = NaryTreeNode(boardCopy, [0][0])
+
+        self.depth(root, 2, self.ID, -10000000000, 10000000000)
+
+        moveLoc = savedGrid
+        print(moveLoc)
+
+        if legalMove(board, moveLoc):
+            return moveLoc
+
+    def boardStates(self, board, color):#this function simulates all the posibul positions that can be made from the inputed board position
+        storedGames = []
+        for row in range(len(board)):
+            for col in range(len(board)):
+                if board[row][col] == 0:
+                    moveLoc = (row, col)
+
+                    boardCopy = [list(row) for row in board]  # create a copy of the board
+                    boardCopy[row][col] = color  # update the copy with the new move
+                    game = (boardCopy, moveLoc)
+
+                    storedGames.append(game)
+
+        return storedGames
+
+    def score(self, board):#this gives each indevidual board position a numerical score
+
+        score = 0
+        for row in range(len(board)):
+            for col in range(len(board)):
+                # Check horizontal
+                if col <= len(board) - 5:
+                    line = [board[row][col + i] for i in range(5)]
+                    score += self.evaluate_line(line)
+                # Check vertical
+                if row <= len(board) - 5:
+                    line = [board[row + i][col] for i in range(5)]
+                    score += self.evaluate_line(line)
+                # Check diagonal (positive slope)
+                if row <= len(board) - 5 and col <= len(board[row]) - 5:
+                    line = [board[row + i][col + i] for i in range(5)]
+                    score += self.evaluate_line(line)
+                # Check diagonal (negative slope)
+                if row <= len(board) - 5 and col >= 4:
+                    line = [board[row + i][col - i] for i in range(5)]
+                    score += self.evaluate_line(line)
+        return score
+
+    def evaluate_line(self, line):#this calculates how many in a row it has
+
+        opponent = -self.ID
+        if line.count(self.ID) == 5:
+            return 100000000
+        elif line.count(self.ID) == 4 and line.count(0) == 1:
+            return 100000
+        elif line.count(self.ID) == 3 and line.count(0) == 2:
+            return 1000
+        elif line.count(self.ID) == 2 and line.count(0) == 3:
+            return 100
+        elif line.count(opponent) == 5:
+            return -100000000
+        elif line.count(opponent) == 4 and line.count(0) == 1:
+            return -100000
+        elif line.count(opponent) == 3 and line.count(0) == 2:
+            return -1000
+        elif line.count(opponent) == 2 and line.count(0) == 3:
+            return -100
+        else:
+            return 0
+
+    def depth(self, start, depth, color, alpha, beta):# this recursivly crates an n-ary tree with all posibul board positions then uses a minimax algorithem to pick a move
+        global savedGrid
+        if depth <= 0:
+            value = self.score(start.get_value())
+            return value
+
+        if color == self.ID:
+            max_val = -100000000000
+            storedGames = self.boardStates(start.get_value(), color)
+
+            for i in range(len(storedGames)):
+                child1 = NaryTreeNode(storedGames[i][0], storedGames[i][1])
+
+                value = self.depth(child1, depth - 1, -color, alpha, beta)
+
+                if value > max_val:
+                    max_val = value
+                    if depth == 2:
+
+                        savedGrid = child1.get_move()
+
+                if alpha < value:
+                    alpha = value
+
+                if beta <= alpha:
+                    break
+
+                start.add_child(child1)
+            return max_val
+        else:
+            min_val = 100000000000
+            storedGames = self.boardStates(start.get_value(), color)
+
+            for i in range(len(storedGames)):
+                child1 = NaryTreeNode(storedGames[i][0], storedGames[i][1])
+
+                value = self.depth(child1, depth - 1, -color, alpha, beta)
+
+                if value < min_val:
+                    min_val = value
+                    if depth == 2:
+                        savedGrid = child1.get_move()
+
+                if beta > value:
+                    beta = value
+
+                if beta <= alpha:
+                    break
+
+                start.add_child(child1)
+            return min_val
+
+
+class NaryTreeNode:
+    def __init__(self, gameState, move):
+        self.gameState = gameState
+        self.children = []
+        self.move = move
+
+    def add_child(self, child):
+        self.children.append(child)
+
+    def get_children(self):
+        return self.children
+
+    def get_value(self):
+        return self.gameState
+
+    def get_move(self):
+        return self.move
